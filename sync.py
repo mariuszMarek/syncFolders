@@ -18,21 +18,18 @@ parser.add_argument('-r', '--replica',  action='append', help="replica folder pa
 parser.add_argument('-i', '--interval', action='append', help="source folder interval scan", type=int,          required=True)
 parser.add_argument('-l', '--logPath',  action='store',  help="folder for logs",             type=validate_filepath_arg, required=True)
 
-def validateSetsReturnNumSets(inputArgs):        
+def validateSets(inputArgs):        
     elementNames = {}    
     for argName, argValues in inputArgs.items():
         if type(argValues) is list:
             elementNames[argName] = len(argValues)    
     if(sum(elementNames.values()) % 3 != 0 and sum(elementNames.values()) > 3): raise Exception("Sorry, number or sets of arguments is not even")
-    else : return int(sum(elementNames.values()) / 3)
 
-logLocation = parser.parse_args().logPath
-inputArgs   = vars(parser.parse_args())
-totalSets   = validateSetsReturnNumSets(inputArgs)
+inputArgs   = parser.parse_args()
+validateSets(vars(inputArgs))
+
+logLocation = inputArgs.logPath
 synSet      = {}
 
-for setNum in range (totalSets):
-
-    # if type(argValues) is list:
-    # synSet[set] = []
-    pass
+for index, sourceFilePath in enumerate(inputArgs.source):
+    synSet[sourceFilePath + inputArgs.replica[index]] = [sourceFilePath, inputArgs.replica[index], inputArgs.interval[index]]
