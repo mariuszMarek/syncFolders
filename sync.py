@@ -1,5 +1,6 @@
 from os import listdir
 
+import hashlib
 import shutil
 import argparse
 import time
@@ -8,7 +9,7 @@ import pathlib
 
 parser = argparse.ArgumentParser(description='Async sync folders based on in parameters', prog="Sync folders",
     epilog="""You can pass multiple instance of the parameters exept the -l/--logPath to handle multiple folders, 
-              parameters are grouped by order of input parameter in groups of 3 (source, dest, intercal) and the number of those parameters needs to be even""")
+              parameters are grouped by order of input parameter in groups of 3 (source, dest, intercal) and the number of those "sets" needs to be even""")
 
 parser.add_argument('-s', '--source',   action='append', help="source folder path",          type=pathlib.Path, required=True)
 parser.add_argument('-r', '--replica',  action='append', help="replica folder path",         type=pathlib.Path, required=True)
@@ -17,22 +18,15 @@ parser.add_argument('-l', '--logPath',  action='store',  help="folder for logs",
 
 inputArgs = parser.parse_args()
 # print(inputArgs.replica)
-class ValidateInputArgs:
-    def __init__(self,inputArgs):
-        self.inputArgs = vars(inputArgs) # change the namespaces to dictonary
-        self.checkNum()
-    def checkNum(self):        
-        for argName, argValues in self.inputArgs.items():
-            # print(f"argName -> {argName}, argValue -> {argValue}")
-            if type(argValues) is list:
-                for specificValue in argValues:
-                    print(specificValue)
-            else:
-                self.logLocation = argValues
 
+def validateSets(inputArgs):        
+    elementNames = {}
+    mapOfArgs = vars(inputArgs)
+    for argName, argValues in mapOfArgs.items():
+        if type(argValues) is list:
+            elementNames[argName] = len(argValues)        
+    if(sum(elementNames.values()) % 3 != 0 and sum(elementNames.values()) > 3): raise Exception("Sorry, number or sets of arguments is not even")
             
 
-            
-
-test = ValidateInputArgs(inputArgs)
+validateSets(inputArgs)
 
