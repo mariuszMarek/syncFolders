@@ -22,9 +22,9 @@ def validateSetsReturnNumSets(inputArgs):
     elementNames = {}    
     for argName, argValues in inputArgs.items():
         if type(argValues) is list:
-            elementNames[argName] = len(argValues)        
+            elementNames[argName] = len(argValues)    
     if(sum(elementNames.values()) % 3 != 0 and sum(elementNames.values()) > 3): raise Exception("Sorry, number or sets of arguments is not even")
-    else : return sum(elementNames.values()) %3
+    else : return int(sum(elementNames.values()) / 3)
 
 logLocation = parser.parse_args().logPath
 inputArgs   = vars(parser.parse_args())
