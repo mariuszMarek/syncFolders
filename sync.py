@@ -33,3 +33,23 @@ synSet      = {}
 
 for index, sourceFilePath in enumerate(inputArgs.source):
     synSet[sourceFilePath + inputArgs.replica[index]] = [sourceFilePath, inputArgs.replica[index], inputArgs.interval[index]]
+
+class SyncFolders:
+    def __init__(self):
+        pass
+    async def diff(self):
+        pass
+    async def diffReplicaSource(self):
+        pass
+    async def diffSourceReplica(self):
+        pass
+    async def operationOfFolders(self):
+        pass
+
+class SaveLog:
+    def __init__(self):
+        pass
+    def parseData(self):
+        pass
+    def saveToFile(self):
+        pass
