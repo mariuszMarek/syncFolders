@@ -17,5 +17,11 @@ parser.add_argument('-l', '--logPath', action='store',  help="folder for logs", 
 
 inputArgs = parser.parse_args()
 # print(inputArgs.replica)
-
+class ValidateInputArgs:
+    def __init__(self,inputArgs):
+        self.inputArgs = inputArgs
+        self.checkNum()
+    def checkNum(self):
+        for types in self.inputArgs:
+            print(types)
 
