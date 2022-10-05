@@ -10,18 +10,29 @@ parser = argparse.ArgumentParser(description='Async sync folders based on in par
     epilog="""You can pass multiple instance of the parameters exept the -l/--logPath to handle multiple folders, 
               parameters are grouped by order of input parameter in groups of 3 (source, dest, intercal) and the number of those parameters needs to be even""")
 
-parser.add_argument('-s', '--source',   action='append', help="source folder path", type=pathlib.Path)
-parser.add_argument('-r', '--replica',  action='append', help="replica folder path", type=pathlib.Path)
-parser.add_argument('-i', '--interval', action='append', help="source folder interval scan", type=int)
-parser.add_argument('-l', '--logPath', action='store',  help="folder for logs", type=pathlib.Path)
+parser.add_argument('-s', '--source',   action='append', help="source folder path",          type=pathlib.Path, required=True)
+parser.add_argument('-r', '--replica',  action='append', help="replica folder path",         type=pathlib.Path, required=True)
+parser.add_argument('-i', '--interval', action='append', help="source folder interval scan", type=int,          required=True)
+parser.add_argument('-l', '--logPath',  action='store',  help="folder for logs",             type=pathlib.Path, required=True)
 
 inputArgs = parser.parse_args()
 # print(inputArgs.replica)
 class ValidateInputArgs:
     def __init__(self,inputArgs):
-        self.inputArgs = inputArgs
+        self.inputArgs = vars(inputArgs) # change the namespaces to dictonary
         self.checkNum()
-    def checkNum(self):
-        for types in self.inputArgs:
-            print(types)
+    def checkNum(self):        
+        for argName, argValues in self.inputArgs.items():
+            # print(f"argName -> {argName}, argValue -> {argValue}")
+            if type(argValues) is list:
+                for specificValue in argValues:
+                    print(specificValue)
+            else:
+                self.logLocation = argValues
+
+            
+
+            
+
+test = ValidateInputArgs(inputArgs)
 
