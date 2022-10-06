@@ -24,30 +24,23 @@ class SyncFolders(SaveLog):
         self.destinFilePath = Instructions[1]
         self.TimeInterval   = Instructions[2]
         # sourceFilePath, inputArgs.replica[index], inputArgs.interval[index]
-        super().__init__(logLocation, logContent)
-        pass
+        super().__init__(logLocation)        
     async def runSync(self):
         while True:
-            scanFolderTask = asyncio.create_task(coro=self.scanFolder())
-            await scanFolderTask
-
-            diffTask = asyncio.create_task(coro=self.diff())
-            await diffTask
+            self.scanFolder()
+            self.diff()
+            self.operationOfFolders()
             
-            operationTask = asyncio.create_task(coro=self.operationOfFolders())
-            await operationTask
-
             await asyncio.sleep(self.TimeInterval) # wait before next scaning of folder
-    async def scanFolder(self):
+    def scanFolder(self):
         #scan the folders and list the files and run the diff command
         # add md5 hash to all of the files
-        diffTask = asyncio.create_task(coro=self.diff())
-        await diffTask                
+        self.diff()        
         pass
-    async def diff(self):
+    def diff(self):
         #create a new list 
         pass    
-    async def operationOfFolders(self):
+    def operationOfFolders(self):
         pass
 
 
@@ -68,6 +61,7 @@ def validateSets(inputArgs):
         if type(argValues) is list:
             elementNames[argName] = len(argValues)    
     if(sum(elementNames.values()) % 3 != 0 and sum(elementNames.values()) > 3): raise Exception("Sorry, number or sets of arguments is not even")
+
 if __name__ == "__main__":
     
     inputArgs   = main().parse_args()
@@ -84,5 +78,5 @@ if __name__ == "__main__":
     asyncTasks = []
     for job, jobParams in synSet.items():
         folderSync = SyncFolders(jobParams)
-        asyncTasks.append(asyncLoop.create_task(folderSync.runSync()))
+        asyncLoop.create_task(folderSync.runSync()) #maybe it will work
     asyncLoop.run_forever()
