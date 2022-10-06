@@ -8,6 +8,39 @@ import time
 import asyncio
 import pathlib
 
+class SaveLog:
+    def __init__(self, logLocation):
+        self.logLocation = logLocation
+        pass
+    async def parseData(self, logContent):
+        # make some CSV structure + some translations?
+        self.saveToFile()
+        pass
+    async def saveToFile(self):
+        pass
+class SyncFolders(SaveLog):
+    def __init__(self, Instructions):
+
+        super().__init__(logLocation, logContent)
+        pass
+    async def runSync(self):
+        while True:
+            scanFolderTask = asyncio.create_task(coro=self.scanFolder())
+            await scanFolderTask
+            await asyncio.sleep(delay)
+    async def scanFolder(self):
+        #scan the folders and list the files and run the diff command
+        # add md5 hash to all of the files
+        diffTask = asyncio.create_task(coro=self.diff())
+        await diffTask                
+        pass
+    async def diff(self):
+        #create a new list 
+        pass    
+    async def operationOfFolders(self):
+        pass
+
+
 
 parser = argparse.ArgumentParser(description='Async sync folders based on in parameters', prog="Sync folders",
     epilog="""You can pass multiple instance of the parameters exept the -l/--logPath to handle multiple folders, 
@@ -34,22 +67,10 @@ synSet      = {}
 for index, sourceFilePath in enumerate(inputArgs.source):
     synSet[sourceFilePath + inputArgs.replica[index]] = [sourceFilePath, inputArgs.replica[index], inputArgs.interval[index]]
 
-class SyncFolders:
-    def __init__(self):
-        pass
-    async def diff(self):
-        pass
-    async def diffReplicaSource(self):
-        pass
-    async def diffSourceReplica(self):
-        pass
-    async def operationOfFolders(self):
-        pass
 
-class SaveLog:
-    def __init__(self):
-        pass
-    def parseData(self):
-        pass
-    def saveToFile(self):
-        pass
+asyncLoop = asyncio.get_event_loop()
+asyncTasks = []
+for job, jobParams in synSet.items():
+    folderSync = SyncFolders(jobParams)
+    asyncTasks.append(asyncLoop.create_task(folderSync.))
+asyncLoop.run_forever(asyncio.wait(asyn) )
