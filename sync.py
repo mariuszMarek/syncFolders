@@ -20,14 +20,24 @@ class SaveLog:
         pass
 class SyncFolders(SaveLog):
     def __init__(self, Instructions):
-
+        self.sourceFilePath = Instructions[0]
+        self.destinFilePath = Instructions[1]
+        self.TimeInterval   = Instructions[2]
+        # sourceFilePath, inputArgs.replica[index], inputArgs.interval[index]
         super().__init__(logLocation, logContent)
         pass
     async def runSync(self):
         while True:
             scanFolderTask = asyncio.create_task(coro=self.scanFolder())
             await scanFolderTask
-            await asyncio.sleep(delay)
+
+            diffTask = asyncio.create_task(coro=self.diff())
+            await diffTask
+            
+            operationTask = asyncio.create_task(coro=self.operationOfFolders())
+            await operationTask
+
+            await asyncio.sleep(self.TimeInterval) # wait before next scaning of folder
     async def scanFolder(self):
         #scan the folders and list the files and run the diff command
         # add md5 hash to all of the files
@@ -72,5 +82,5 @@ asyncLoop = asyncio.get_event_loop()
 asyncTasks = []
 for job, jobParams in synSet.items():
     folderSync = SyncFolders(jobParams)
-    asyncTasks.append(asyncLoop.create_task(folderSync.))
-asyncLoop.run_forever(asyncio.wait(asyn) )
+    asyncTasks.append(asyncLoop.create_task(folderSync.runSync()))
+asyncLoop.run_forever()
