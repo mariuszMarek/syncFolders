@@ -5,7 +5,6 @@ import hashlib
 import shutil
 import argparse
 import time
-import asyncio
 import pathlib
 
 class SaveLog:
@@ -22,20 +21,19 @@ class SyncFolders(SaveLog):
     def __init__(self, Instructions):
         self.sourceFilePath = Instructions[0]
         self.destinFilePath = Instructions[1]
-        self.TimeInterval   = Instructions[2]
+        self.TimeInterval   = Instructions[2]        
         # sourceFilePath, inputArgs.replica[index], inputArgs.interval[index]
-        super().__init__(logLocation)        
-    async def runSync(self):
+        super().__init__(logLocation)
+    def runSync(self):
         while True:
-            self.scanFolder()
-            self.diff()
-            self.operationOfFolders()
-            
-            await asyncio.sleep(self.TimeInterval) # wait before next scaning of folder
+                self.scanFolder()
+                self.diff()
+                self.operationOfFolders()
+                print(f"working lol -> {self.TimeInterval}")                    
+        
     def scanFolder(self):
         #scan the folders and list the files and run the diff command
-        # add md5 hash to all of the files
-        self.diff()        
+        # add md5 hash to all of the files     
         pass
     def diff(self):
         #create a new list 
@@ -72,11 +70,9 @@ if __name__ == "__main__":
 
     for index, sourceFilePath in enumerate(inputArgs.source):
         synSet[sourceFilePath + inputArgs.replica[index]] = [sourceFilePath, inputArgs.replica[index], inputArgs.interval[index]]
-
-
-    asyncLoop = asyncio.get_event_loop()
-    asyncTasks = []
+    
     for job, jobParams in synSet.items():
-        folderSync = SyncFolders(jobParams)
-        asyncLoop.create_task(folderSync.runSync()) #maybe it will work
-    asyncLoop.run_forever()
+        print(f"job -> {job}")
+        folderSync = SyncFolders(jobParams)        
+        folderSync.runSync()
+
