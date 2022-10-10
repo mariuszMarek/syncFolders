@@ -10,10 +10,12 @@ import pathlib
 import keyboard
 import pynput
 
+is_quit = False
+quit_char = 'b'
 KeyComb_Quit = [
-    {pynput.keyboard.Key.ctrl, pynput.keyboard.KeyCode(char='q')},
-    {pynput.keyboard.Key.ctrl_l, pynput.keyboard.KeyCode(char='q')},
-    {pynput.keyboard.Key.ctrl_r, pynput.keyboard.KeyCode(char='q')}
+    {pynput.keyboard.Key.ctrl, pynput.keyboard.KeyCode(char=quit_char)},
+    {pynput.keyboard.Key.ctrl_l, pynput.keyboard.KeyCode(char=quit_char)},
+    {pynput.keyboard.Key.ctrl_r, pynput.keyboard.KeyCode(char=quit_char)}
 
 ]
 
@@ -45,21 +47,23 @@ class SaveLog:
     async def saveToFile(self):
         pass
 class SyncFolders(SaveLog, Thread):
-    def __init__(self, Instructions):
+    def __init__(self, Instructions, saveLogLocation):
         Thread.__init__(self)
         self.sourceFilePath = Instructions[0]
         self.destinFilePath = Instructions[1]
         self.TimeInterval   = Instructions[2]        
         # sourceFilePath, inputArgs.replica[index], inputArgs.interval[index]
-        super().__init__(logLocation)
+        super().__init__(saveLogLocation)
     def run(self):
-
+        self._runSync()
     def _runSync(self):
+        global is_quit
         while True:
-                self.scanFolder()
-                self.diff()
-                self.operationOfFolders()
+                self._scanFolder()
+                self._diff()
+                self._operationOfFolders()
                 print(f"working lol -> {self.TimeInterval}")                    
+                if is_quit: break 
         
     def _scanFolder(self):
         #scan the folders and list the files and run the diff command
@@ -82,18 +86,9 @@ def main():
     parser.add_argument('-r', '--replica',  action='append', help="replica folder path",         type=validate_filepath_arg, required=True)
     parser.add_argument('-i', '--interval', action='append', help="source folder interval scan", type=int,          required=True)
     parser.add_argument('-l', '--logPath',  action='store',  help="folder for logs",             type=validate_filepath_arg, required=True)
-    return parser
-
-def validateSets(inputArgs):        
-    elementNames = {}    
-    for argName, argValues in inputArgs.items():
-        if type(argValues) is list:
-            elementNames[argName] = len(argValues)    
-    if(sum(elementNames.values()) % 3 != 0 and sum(elementNames.values()) > 3): raise Exception("Sorry, number or sets of arguments is not even")
-
-if __name__ == "__main__":
     
-    inputArgs   = main().parse_args()
+        
+    inputArgs   = parser.parse_args()
     validateSets(vars(inputArgs))
 
     logLocation = inputArgs.logPath
@@ -103,7 +98,18 @@ if __name__ == "__main__":
         synSet[sourceFilePath + inputArgs.replica[index]] = [sourceFilePath, inputArgs.replica[index], inputArgs.interval[index]]
     
     for job, jobParams in synSet.items():
-        print(f"job -> {job}")
-        folderSync = SyncFolders(jobParams)        
-        folderSync.runSync()
+        # print(f"job -> {job}, jobParams->{jobParams}")
+        folderSync = SyncFolders(jobParams,logLocation)
+        folderSync.run()
+
+
+def validateSets(inputArgs):        
+    elementNames = {}    
+    for argName, argValues in inputArgs.items():
+        if type(argValues) is list:
+            elementNames[argName] = len(argValues)    
+    if(sum(elementNames.values()) % 3 != 0 and sum(elementNames.values()) > 3): raise Exception("Sorry, number or sets of arguments is not even")
+
+if __name__ == "__main__":
+    main()
 
