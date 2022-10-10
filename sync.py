@@ -2,21 +2,15 @@ from os import listdir
 from pathvalidate.argparse import validate_filepath_arg
 from threading import Thread
 
-import hashlib
-import shutil
-import argparse
-import time
-import pathlib
-import keyboard
-import pynput
+import hashlib, shutil, argparse, time, pathlib, glob
+import keyboard, pynput
 
-is_quit = False
-quit_char = 'b'
+is_quit      = False
+quit_char    = 'b'
 KeyComb_Quit = [
     {pynput.keyboard.Key.ctrl, pynput.keyboard.KeyCode(char=quit_char)},
     {pynput.keyboard.Key.ctrl_l, pynput.keyboard.KeyCode(char=quit_char)},
     {pynput.keyboard.Key.ctrl_r, pynput.keyboard.KeyCode(char=quit_char)}
-
 ]
 
 def on_press(key):
@@ -51,8 +45,10 @@ class SyncFolders(SaveLog, Thread):
         Thread.__init__(self)
         self.sourceFilePath = Instructions[0]
         self.destinFilePath = Instructions[1]
-        self.TimeInterval   = Instructions[2]        
-        # sourceFilePath, inputArgs.replica[index], inputArgs.interval[index]
+        self.TimeInterval   = Instructions[2]
+        self.mapOfFiles     = {}
+        self.diffMap        = {}
+        
         super().__init__(saveLogLocation)
     def run(self):
         self._runSync()
@@ -84,7 +80,7 @@ def main():
 
     parser.add_argument('-s', '--source',   action='append', help="source folder path",          type=validate_filepath_arg, required=True)
     parser.add_argument('-r', '--replica',  action='append', help="replica folder path",         type=validate_filepath_arg, required=True)
-    parser.add_argument('-i', '--interval', action='append', help="source folder interval scan", type=int,          required=True)
+    parser.add_argument('-i', '--interval', action='append', help="source folder interval scan", type=int,                   required=True)
     parser.add_argument('-l', '--logPath',  action='store',  help="folder for logs",             type=validate_filepath_arg, required=True)
     
         
