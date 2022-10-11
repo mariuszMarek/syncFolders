@@ -61,43 +61,39 @@ class SyncFolders(SaveLog, Thread):
                 time.sleep(self.TimeInterval)
                 if is_quit: break 
     def _extractMetaAndScan(self,scanRoot, folderMapped):
-        searchString =  os.path.join(scanRoot, "**", "**")
-        for files in glob.iglob(searchString, recursive=True):            
-            if files == os.path.join(scanRoot, "") : continue
+        searchString =scanRoot + os.path.sep +  "**" + os.path.sep + "**"
+        for files in glob.iglob(searchString, recursive=True):                        
+            if files == scanRoot + os.path.sep : continue            
             fileLoc   = files
             meta      = os.stat(files)
             modTime   = meta.st_mtime
             fileSize  = meta.st_size
-            fileLoc   = fileLoc.replace(scanRoot, "")
+            fileLoc   = fileLoc.replace(scanRoot, "")            
+            hashMD5   = hashlib.md5( (fileLoc + str(modTime) + str(fileSize)).encode('utf-8') ).hexdigest()            
 
-            # print(f"{files} == {fileLoc}")
-
-            hashMD5   = hashlib.md5( (fileLoc + str(modTime) + str(fileSize)).encode('utf-8') ).hexdigest()
-            # hashMD5   = (fileLoc + ":" + str(modTime) + str(fileSize)).encode('utf-8') 
-            # print(f"fileLoc -> {fileLoc}")
             folderMapped[hashMD5] = fileLoc
     def _scanFolder(self):        
         self._extractMetaAndScan(self.sourceFilePath, self.mapOfSouFiles)        
         self._extractMetaAndScan(self.destinFilePath, self.mapOfDesFiles)
     def _createNewDiffDict(self,DictA,DictB):
-        return dict( sorted( {hashKey: dictValue for hashKey, dictValue in DictA.items() if hashKey not in DictB}.items(), key=operator.itemgetter(1), reverse=True))
+        return dict( sorted( {hashKey: dictValue for hashKey, dictValue in DictA.items() if hashKey not in DictB}.items(), key=lambda item: item[1], reverse=True))
     def _diff(self):        
         self.diffMap['Copy'] = self._createNewDiffDict(self.mapOfSouFiles, self.mapOfDesFiles)
-        self.diffMap['Del'] = self._createNewDiffDict(self.mapOfDesFiles, self.mapOfSouFiles)
-        print(self.diffMap)
+        self.diffMap['Del'] = self._createNewDiffDict(self.mapOfDesFiles, self.mapOfSouFiles)        
     def _operationOfFolders(self):
-        for instructions, listOfFilesDict in self.diffMap.items():
-            for hashKeys, items in listOfFilesDict.items():
-                sourceFile = os.path.join(self.sourceFilePath, items)
-                destFile   = os.path.join(self.destinFilePath, items)
-                if(instructions == "Copy") : 
+        for instructions, listOfFilesDict in self.diffMap.items():            
+            for hashKeys, items in listOfFilesDict.items():                
+                sourceFile = self.sourceFilePath +  items
+                destFile   = self.destinFilePath +  items                
+                if(instructions == "Copy") :
                     # os.makedirs(os.path.dirname(destFile), exist_ok=True)
                     # shutil.copy2(sourceFile, destFile)                
                     pass
                 if(instructions == "Del") :
                     #check if it's folder
-                    if(os.path.isfile(destFile)):
+                    if(not os.path.isfile(destFile)):
                         try:
+                            print(f"folder to delete -> {destFile}")
                             #try to delete empty file
                             # os.rmdir(destFile)
                             pass
@@ -105,9 +101,11 @@ class SyncFolders(SaveLog, Thread):
                             pass
                             #folder not empty do nothing                        
                     else :
-            #zmienic sortowanie by katalogi byly ostatnie
-        
-
+                        try:
+                            #try to delete file
+                            print(f"file to delete -> {destFile}")
+                        except:                        
+                            pass
 
 def main():
     parser = argparse.ArgumentParser(description='Async sync folders based on in parameters', prog="Sync folders",
