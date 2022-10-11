@@ -48,6 +48,7 @@ class SyncFolders(SaveLog, Thread):
         self.mapOfSouFiles  = {}
         self.mapOfDesFiles  = {}
         self.diffMap        = {}
+        self.logActions     = []
         
         super().__init__(saveLogLocation)
     def run(self):
@@ -57,55 +58,79 @@ class SyncFolders(SaveLog, Thread):
         while True:
                 self._scanFolder()
                 self._diff()
-                self._operationOfFolders()                
+                self._operationOfFolders()
                 time.sleep(self.TimeInterval)
+                self._cleanVariables()
                 if is_quit: break 
+    def _cleanVariables(self):
+        self.mapOfSouFiles  = {}
+        self.mapOfDesFiles  = {}
+        self.diffMap        = {}
+        self.logActions     = []
     def _extractMetaAndScan(self,scanRoot, folderMapped):
-        searchString =scanRoot + os.path.sep +  "**" + os.path.sep + "**"
+        searchString = scanRoot + os.path.sep +  "**" + os.path.sep + "**"
         for files in glob.iglob(searchString, recursive=True):                        
             if files == scanRoot + os.path.sep : continue            
             fileLoc   = files
             meta      = os.stat(files)
             modTime   = meta.st_mtime
             fileSize  = meta.st_size
-            fileLoc   = fileLoc.replace(scanRoot, "")            
-            hashMD5   = hashlib.md5( (fileLoc + str(modTime) + str(fileSize)).encode('utf-8') ).hexdigest()            
-
+            fileLoc   = fileLoc.replace(scanRoot, "")
+            hasString = fileLoc + str(modTime) + str(fileSize)
+            if(not os.path.isfile(files)): hasString = fileLoc            
+            hashMD5   = hashlib.md5( (hasString).encode('utf-8') ).hexdigest()            
             folderMapped[hashMD5] = fileLoc
     def _scanFolder(self):        
         self._extractMetaAndScan(self.sourceFilePath, self.mapOfSouFiles)        
         self._extractMetaAndScan(self.destinFilePath, self.mapOfDesFiles)
-    def _createNewDiffDict(self,DictA,DictB):
-        return dict( sorted( {hashKey: dictValue for hashKey, dictValue in DictA.items() if hashKey not in DictB}.items(), key=lambda item: item[1], reverse=True))
+    def _createNewDiffDict(self,DictA,DictB, reverseSort):        
+        return dict( sorted( {hashKey: dictValue for hashKey, dictValue in DictA.items() if hashKey not in DictB}.items(), key=lambda item: item[1], reverse=reverseSort))
+        
     def _diff(self):        
-        self.diffMap['Copy'] = self._createNewDiffDict(self.mapOfSouFiles, self.mapOfDesFiles)
-        self.diffMap['Del'] = self._createNewDiffDict(self.mapOfDesFiles, self.mapOfSouFiles)        
+        self.diffMap['Copy'] = self._createNewDiffDict(self.mapOfSouFiles, self.mapOfDesFiles, reverseSort=False)
+        self.diffMap['Del']  = self._createNewDiffDict(self.mapOfDesFiles, self.mapOfSouFiles, reverseSort=True)        
     def _operationOfFolders(self):
-        for instructions, listOfFilesDict in self.diffMap.items():            
-            for hashKeys, items in listOfFilesDict.items():                
+        for instructions, listOfFilesDict in self.diffMap.items():
+            for hashKeys, items in listOfFilesDict.items():
                 sourceFile = self.sourceFilePath +  items
-                destFile   = self.destinFilePath +  items                
-                if(instructions == "Copy") :
-                    # os.makedirs(os.path.dirname(destFile), exist_ok=True)
-                    # shutil.copy2(sourceFile, destFile)                
-                    pass
+                destFile   = self.destinFilePath +  items
+                sourceDestTouple = (sourceFile, destFile)
+                if(instructions == "Copy") :                                        
+                    try:                            
+                        # if(not os.path.isfile(destFile)): os.makedirs(os.path.dirname(destFile), exist_ok=True)
+                        # else:
+                        os.makedirs(os.path.dirname(destFile), exist_ok=True)
+                        shutil.copy2(sourceFile, destFile)                        
+                    except:
+                        pass
+                    else:
+                        print(f"File {sourceDestTouple} copied")
+                        self.logActions.append([instructions,"file", sourceDestTouple])
                 if(instructions == "Del") :
                     #check if it's folder
                     if(not os.path.isfile(destFile)):
                         try:
-                            print(f"folder to delete -> {destFile}")
-                            #try to delete empty file
-                            # os.rmdir(destFile)
+                            # print(f"folder to delete -> {destFile}")
+                            os.rmdir(destFile)
                             pass
                         except:
                             pass
-                            #folder not empty do nothing                        
+                        else:
+                            print(f"Folder {items} removed {hashKeys}")
+                            self.logActions.append([instructions, "folder", destFile])
                     else :
                         try:
                             #try to delete file
-                            print(f"file to delete -> {destFile}")
+                            # print(f"file to delete -> {destFile}")
+                            os.remove(destFile)
+                            pass
                         except:                        
                             pass
+                        else:
+                            print(f"File {items} removed")
+                            self.logActions.append([instructions,"file", destFile])                
+
+        # print(self.logActions)
 
 def main():
     parser = argparse.ArgumentParser(description='Async sync folders based on in parameters', prog="Sync folders",
