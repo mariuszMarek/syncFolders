@@ -1,6 +1,7 @@
 from os import listdir
 from pathvalidate.argparse import validate_filepath_arg
 from threading import Thread
+from pathlib import Path
 
 import hashlib, shutil, argparse, time, pathlib, glob
 import keyboard, pynput, sys, os
@@ -60,7 +61,7 @@ class SyncFolders(SaveLog, Thread):
                 self._diff()
                 self._operationOfFolders()
                 time.sleep(self.TimeInterval)
-                print("another sequence")
+                # print("another sequence")
                 self._cleanVariables()
                 if is_quit: break 
     def _cleanVariables(self):
@@ -94,54 +95,40 @@ class SyncFolders(SaveLog, Thread):
         self.diffMap['Del']  = self._createNewDiffDict(self.mapOfDesFiles, self.mapOfSouFiles, reverseSort=True)        
     def _operationOfFolders(self):
         for instructions, listOfFilesDict in self.diffMap.items():
+            wasDeleted = []
             for hashKeys, items in listOfFilesDict.items():
                 sourceFile     = self.sourceFilePath +  items
                 destFile       = self.destinFilePath +  items
                 logDescription = ""
                 operatedType   = ""
-                if instructions == "Copy" :
-                    #sprawdzic czy katalog docelowy istnieje, jesli nie to go stworzyc
-                    #dopiero wtedy mozna kopiowac i nie ma znaczenia czy plik just jest tam czy nie
-                    destFolder = destFile.replace(os.path.basename(destFile),"")
-                    # print("")
-                    # print(f"destFile -> {destFile}")
-                    # print("folder docelowy1 ", destFile)
-                    # print("folder docelowy2 ", destFolder)
-                    # print("")
-                    if not os.path.isdir(destFile) and not os.path.isfile(destFile):
-                        print (os.path.isfile(destFile))
-                        print("dupa ", destFile)
-                        # print(os.makedirs(os.path.dirname(destFile), exist_ok=True))
-                        os.makedirs(os.path.dirname(destFile), exist_ok=True)
-                    # elif os.path.isdir(destFile):
+                if instructions == "Copy":
+
+                    if Path(sourceFile).is_dir() and not Path(destFile).is_dir():                        
+                        os.makedirs(os.path.dirname(destFile), exist_ok=True)                    
                     else:
-                        try:
-                            os.makedirs(os.path.dirname(destFile), exist_ok=True)
+                        try:                            
                             shutil.copy2(sourceFile, destFile,)
                             logDescription = f"File {items} from {self.sourceFilePath} copied to {self.destinFilePath}"
                             operatedType   = "file"
                         except:
                             print (f"Can't copy the file {sourceFile} to {destFile} or create subfolders, please check filepaths provided and/or permissions")
-                    # else:
-                        # pass
-                        # print("destFile ", destFile)
-                        # print("destFolde ", destFolder)
-                        # shutil.copy2(sourceFile, destFile)
-                if(instructions == "Del") :                    
-                    if(not os.path.isfile(destFile)):
-                        try:                            
-                            os.rmdir(destFile)
+
+                if(instructions == "Del" and not destFile+"\\" in wasDeleted):                    
+                    if(Path(destFile).is_dir()):
+                        try:
+                            wasDeleted.append(destFile)                            
+                            Path(destFile).rmdir()
                             logDescription = f"Folder {items} was removed from {self.destinFilePath}"
                             operatedType   = "folder"
                         except:
                             print (f"Can't delete the folder {destFile}, please check filepaths provided and/or permissions")                        
                     else :
                         try:                            
-                            os.remove(destFile)
+                            Path(destFile).unlink()
                             logDescription = f"File {items} was removed from {self.destinFilePath}"
                             operatedType   = "file"                            
                         except:
-                            print (f"Can't delete the file {destFile}, please check filepaths provided and/or permissions")
+                            print (f"Can't delete the file {destFile} {items}, please check filepaths provided and/or permissions")
                 self._preprLog(hashOfItem=hashKeys,logPrintStr=logDescription, instructions=instructions, copiedType=operatedType,sourceFile=sourceFile, destFile=destFile)
 
 def main():
