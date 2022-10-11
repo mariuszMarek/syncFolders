@@ -76,20 +76,37 @@ class SyncFolders(SaveLog, Thread):
             # hashMD5   = (fileLoc + ":" + str(modTime) + str(fileSize)).encode('utf-8') 
             # print(f"fileLoc -> {fileLoc}")
             folderMapped[hashMD5] = fileLoc
-    def _scanFolder(self):
-        
+    def _scanFolder(self):        
         self._extractMetaAndScan(self.sourceFilePath, self.mapOfSouFiles)        
         self._extractMetaAndScan(self.destinFilePath, self.mapOfDesFiles)
-
-    def _diff(self):
-        # C =                             {k:v for k,v in A.items() if k not in B}
-        diffSourceRemoveDestinasion = {hashKey: dictValue for hashKey, dictValue in self.mapOfSouFiles.items() if hashKey not in self.mapOfDesFiles}
-        # diffSouDest = self.mapOfSouFiles - self.mapOfDesFiles
-        # print(f"mapOfSouFiles {self.mapOfSouFiles} \n mapOfDesFiles{self.mapOfDesFiles}")
-        print(f"diffSourceRemoveDestinasion -> {diffSourceRemoveDestinasion}")
-        pass    
+    def _createNewDiffDict(self,DictA,DictB):
+        return dict( sorted( {hashKey: dictValue for hashKey, dictValue in DictA.items() if hashKey not in DictB}.items(), key=operator.itemgetter(1), reverse=True))
+    def _diff(self):        
+        self.diffMap['Copy'] = self._createNewDiffDict(self.mapOfSouFiles, self.mapOfDesFiles)
+        self.diffMap['Del'] = self._createNewDiffDict(self.mapOfDesFiles, self.mapOfSouFiles)
+        print(self.diffMap)
     def _operationOfFolders(self):
-        pass
+        for instructions, listOfFilesDict in self.diffMap.items():
+            for hashKeys, items in listOfFilesDict.items():
+                sourceFile = os.path.join(self.sourceFilePath, items)
+                destFile   = os.path.join(self.destinFilePath, items)
+                if(instructions == "Copy") : 
+                    # os.makedirs(os.path.dirname(destFile), exist_ok=True)
+                    # shutil.copy2(sourceFile, destFile)                
+                    pass
+                if(instructions == "Del") :
+                    #check if it's folder
+                    if(os.path.isfile(destFile)):
+                        try:
+                            #try to delete empty file
+                            # os.rmdir(destFile)
+                            pass
+                        except:
+                            pass
+                            #folder not empty do nothing                        
+                    else :
+            #zmienic sortowanie by katalogi byly ostatnie
+        
 
 
 def main():
