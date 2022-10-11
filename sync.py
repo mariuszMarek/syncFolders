@@ -60,6 +60,7 @@ class SyncFolders(SaveLog, Thread):
                 self._diff()
                 self._operationOfFolders()
                 time.sleep(self.TimeInterval)
+                print("another sequence")
                 self._cleanVariables()
                 if is_quit: break 
     def _cleanVariables(self):
@@ -85,52 +86,63 @@ class SyncFolders(SaveLog, Thread):
         self._extractMetaAndScan(self.destinFilePath, self.mapOfDesFiles)
     def _createNewDiffDict(self,DictA,DictB, reverseSort):        
         return dict( sorted( {hashKey: dictValue for hashKey, dictValue in DictA.items() if hashKey not in DictB}.items(), key=lambda item: item[1], reverse=reverseSort))
-        
+    def _preprLog(self,logPrintStr, instructions, copiedType, sourceFile, destFile, hashOfItem):
+        self.logActions.append([hashOfItem,instructions,copiedType, logPrintStr,sourceFile, destFile])
+        # print(self.logActions)
     def _diff(self):        
         self.diffMap['Copy'] = self._createNewDiffDict(self.mapOfSouFiles, self.mapOfDesFiles, reverseSort=False)
         self.diffMap['Del']  = self._createNewDiffDict(self.mapOfDesFiles, self.mapOfSouFiles, reverseSort=True)        
     def _operationOfFolders(self):
         for instructions, listOfFilesDict in self.diffMap.items():
             for hashKeys, items in listOfFilesDict.items():
-                sourceFile = self.sourceFilePath +  items
-                destFile   = self.destinFilePath +  items
-                sourceDestTouple = (sourceFile, destFile)
-                if(instructions == "Copy") :                                        
-                    try:                            
-                        # if(not os.path.isfile(destFile)): os.makedirs(os.path.dirname(destFile), exist_ok=True)
-                        # else:
+                sourceFile     = self.sourceFilePath +  items
+                destFile       = self.destinFilePath +  items
+                logDescription = ""
+                operatedType   = ""
+                if instructions == "Copy" :
+                    #sprawdzic czy katalog docelowy istnieje, jesli nie to go stworzyc
+                    #dopiero wtedy mozna kopiowac i nie ma znaczenia czy plik just jest tam czy nie
+                    destFolder = destFile.replace(os.path.basename(destFile),"")
+                    # print("")
+                    # print(f"destFile -> {destFile}")
+                    # print("folder docelowy1 ", destFile)
+                    # print("folder docelowy2 ", destFolder)
+                    # print("")
+                    if not os.path.isdir(destFile) and not os.path.isfile(destFile):
+                        print (os.path.isfile(destFile))
+                        print("dupa ", destFile)
+                        # print(os.makedirs(os.path.dirname(destFile), exist_ok=True))
                         os.makedirs(os.path.dirname(destFile), exist_ok=True)
-                        shutil.copy2(sourceFile, destFile)                        
-                    except:
-                        pass
+                    # elif os.path.isdir(destFile):
                     else:
-                        print(f"File {sourceDestTouple} copied")
-                        self.logActions.append([instructions,"file", sourceDestTouple])
-                if(instructions == "Del") :
-                    #check if it's folder
-                    if(not os.path.isfile(destFile)):
                         try:
-                            # print(f"folder to delete -> {destFile}")
-                            os.rmdir(destFile)
-                            pass
+                            os.makedirs(os.path.dirname(destFile), exist_ok=True)
+                            shutil.copy2(sourceFile, destFile,)
+                            logDescription = f"File {items} from {self.sourceFilePath} copied to {self.destinFilePath}"
+                            operatedType   = "file"
                         except:
-                            pass
-                        else:
-                            print(f"Folder {items} removed {hashKeys}")
-                            self.logActions.append([instructions, "folder", destFile])
+                            print (f"Can't copy the file {sourceFile} to {destFile} or create subfolders, please check filepaths provided and/or permissions")
+                    # else:
+                        # pass
+                        # print("destFile ", destFile)
+                        # print("destFolde ", destFolder)
+                        # shutil.copy2(sourceFile, destFile)
+                if(instructions == "Del") :                    
+                    if(not os.path.isfile(destFile)):
+                        try:                            
+                            os.rmdir(destFile)
+                            logDescription = f"Folder {items} was removed from {self.destinFilePath}"
+                            operatedType   = "folder"
+                        except:
+                            print (f"Can't delete the folder {destFile}, please check filepaths provided and/or permissions")                        
                     else :
-                        try:
-                            #try to delete file
-                            # print(f"file to delete -> {destFile}")
+                        try:                            
                             os.remove(destFile)
-                            pass
-                        except:                        
-                            pass
-                        else:
-                            print(f"File {items} removed")
-                            self.logActions.append([instructions,"file", destFile])                
-
-        # print(self.logActions)
+                            logDescription = f"File {items} was removed from {self.destinFilePath}"
+                            operatedType   = "file"                            
+                        except:
+                            print (f"Can't delete the file {destFile}, please check filepaths provided and/or permissions")
+                self._preprLog(hashOfItem=hashKeys,logPrintStr=logDescription, instructions=instructions, copiedType=operatedType,sourceFile=sourceFile, destFile=destFile)
 
 def main():
     parser = argparse.ArgumentParser(description='Async sync folders based on in parameters', prog="Sync folders",
