@@ -79,7 +79,7 @@ class SyncFolders(SaveLog, Thread):
             fileSize  = meta.st_size
             fileLoc   = fileLoc.replace(scanRoot, "")
             hasString = fileLoc + str(modTime) + str(fileSize)
-            if(not os.path.isfile(files)): hasString = fileLoc            
+            if(not os.path.isfile(files)): hasString = fileLoc + os.path.sep if not fileLoc.endswith(os.path.sep) else fileLoc                
             hashMD5   = hashlib.md5( (hasString).encode('utf-8') ).hexdigest()            
             folderMapped[hashMD5] = fileLoc
     def _scanFolder(self):        
@@ -94,6 +94,8 @@ class SyncFolders(SaveLog, Thread):
     def _diff(self):        
         self.diffMap['Copy'] = self._createNewDiffDict(self.mapOfSouFiles, self.mapOfDesFiles, reverseSort=False)
         self.diffMap['Del']  = self._createNewDiffDict(self.mapOfDesFiles, self.mapOfSouFiles, reverseSort=True)        
+    def _copyOperation(self):
+        pass
     def _operationOfFolders(self):
         for instructions, listOfFilesDict in self.diffMap.items():
             wasDeleted = []
@@ -115,7 +117,7 @@ class SyncFolders(SaveLog, Thread):
                         else:
                             logDescription = f"File {items} from {self.sourceFilePath} copied to {self.destinFilePath}"
                             operatedType   = "file"
-                if(instructions == "Del" and not destFile+"\\" in wasDeleted):                    
+                if(instructions == "Del" and not destFile +"\\" in wasDeleted):                    
                     if(Path(destFile).is_dir()):
                         try:
                             wasDeleted.append(destFile)                            
