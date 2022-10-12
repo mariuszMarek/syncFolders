@@ -97,8 +97,7 @@ class SyncFolders(SaveLog, Thread):
     def _copyOperation(self):
         pass
     def _operationOfFolders(self):
-        for instructions, listOfFilesDict in self.diffMap.items():
-            wasDeleted = []
+        for instructions, listOfFilesDict in self.diffMap.items():            
             for hashKeys, items in listOfFilesDict.items():
                 sourceFile     = self.sourceFilePath +  items
                 destFile       = self.destinFilePath +  items
@@ -107,7 +106,7 @@ class SyncFolders(SaveLog, Thread):
                 if instructions == "Copy":
                     if Path(sourceFile).is_dir() and not Path(destFile).is_dir():                        
                         os.makedirs(os.path.dirname(destFile), exist_ok=True)
-                        logDescription = f"Folder {sourceFile} was created in {self.destinFilePath}"
+                        logDescription = f"Folder {items} was created in {self.destinFilePath}"
                         operatedType   = "folder"
                     else:
                         try:                            
@@ -117,10 +116,9 @@ class SyncFolders(SaveLog, Thread):
                         else:
                             logDescription = f"File {items} from {self.sourceFilePath} copied to {self.destinFilePath}"
                             operatedType   = "file"
-                if(instructions == "Del" and not destFile +"\\" in wasDeleted):                    
+                if(instructions == "Del"):
                     if(Path(destFile).is_dir()):
-                        try:
-                            wasDeleted.append(destFile)                            
+                        try:                            
                             Path(destFile).rmdir()                            
                         except:
                             print (f"Can't delete the folder {destFile}, please check filepaths provided and/or permissions")                        
