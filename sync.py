@@ -5,32 +5,10 @@ from pathlib import Path, PurePath
 from time import localtime, strftime
 
 import hashlib, shutil, argparse, time, pathlib, glob
-import keyboard, pynput, sys, os, threading
+import keyboard, pynput, sys, os
+
 
 is_quit      = False
-quit_char    = 'b'
-KeyComb_Quit = [
-    {pynput.keyboard.Key.ctrl, pynput.keyboard.KeyCode(char=quit_char)},
-    {pynput.keyboard.Key.ctrl_l, pynput.keyboard.KeyCode(char=quit_char)},
-    {pynput.keyboard.Key.ctrl_r, pynput.keyboard.KeyCode(char=quit_char)}
-]
-def on_press(key):
-    global is_quit
-    if any([key in comb for comb in KeyComb_Quit]):
-        current.add(key)
-        if any(all(k in current for k in comb) for comb in KeyComb_Quit):
-            is_quit = True
-
-def on_release(key):
-    try:
-        current.remove(key)
-    except KeyError:
-        pass
-current  = set()
-listener = pynput.keyboard.Listener(on_press=on_press, on_release=on_release)
-listener.start()
-
-
 class SaveLog:
     def __init__(self, logLocation):
         self.logLocation = logLocation
@@ -70,14 +48,16 @@ class SyncFolders(SaveLog, Thread):
         self.diffMap        = {}
         self.logActions     = []
                 
-        self._checkIfDestExists()        
-        print(f"run sync folder -> {self.sourceFilePath} with -> {self.destinFilePath}")                
-    def _checkIfDestExists(self):        
-        rootOfRoot = PurePath(self.destinFilePath).parts
+        self._checkIfDestExists(self.sourceFilePath, "Destination")
+        self._checkIfDestExists(self.destinFilePath, "Source")
+        self._preprLog(hashOfItem="Start",logPrintStr=f"run sync folder -> {self.sourceFilePath} with -> {self.destinFilePath}", 
+                       instructions="Info", copiedType="start",sourceFile=self.sourceFilePath, destFile=self.destinFilePath)                    
+    def _checkIfDestExists(self, rootFolder, typeofRoot):
+        rootOfRoot = PurePath(rootFolder).parts
         rootOfRoot = rootOfRoot[-1]        
-        if not Path(self.destinFilePath).is_dir() : 
-            os.makedirs(self.destinFilePath, exist_ok=True)
-            self._preprLog(hashOfItem="Root",logPrintStr=f"Created missing dest root folder {rootOfRoot} ", instructions="Copy", copiedType="Copy",sourceFile=self.sourceFilePath, destFile=self.destinFilePath)            
+        if not Path(rootFolder).is_dir() : 
+            os.makedirs(rootFolder, exist_ok=True)
+            self._preprLog(hashOfItem="Root",logPrintStr=f"Created missing {typeofRoot} root folder {rootOfRoot} ", instructions="Copy", copiedType="Root",sourceFile=self.sourceFilePath, destFile=self.destinFilePath)            
     def run(self):
         global is_quit
         while True:
@@ -87,7 +67,10 @@ class SyncFolders(SaveLog, Thread):
                 self._saveLog()
                 time.sleep(self.TimeInterval)
                 self._cleanVariables()
-                if is_quit: break 
+                if is_quit:
+                    self._preprLog(hashOfItem="Exit",logPrintStr=f"Sync script terminated by user", instructions="Exit", copiedType="Action",sourceFile=self.sourceFilePath, destFile=self.destinFilePath)
+                    self._saveLog()
+                    break 
     def _cleanVariables(self):
         self.mapOfSouFiles  = {}
         self.mapOfDesFiles  = {}
@@ -167,21 +150,48 @@ class SyncFolders(SaveLog, Thread):
                 if instructions == "Del" : logDescription, operatedType = self._delOperation(destFile, items)
                 self._preprLog(hashOfItem=hashKeys,logPrintStr=logDescription, instructions=instructions, copiedType=operatedType,sourceFile=sourceFile, destFile=destFile)
 
+def keyListener(breakChar):    
+    quit_char    = breakChar[0]
+    KeyComb_Quit = [
+        {pynput.keyboard.Key.ctrl, pynput.keyboard.KeyCode(char=quit_char)},
+        {pynput.keyboard.Key.ctrl_l, pynput.keyboard.KeyCode(char=quit_char)},
+        {pynput.keyboard.Key.ctrl_r, pynput.keyboard.KeyCode(char=quit_char)}
+    ]
+    def on_press(key):
+        global is_quit
+        if any([key in comb for comb in KeyComb_Quit]):
+            current.add(key)
+            if any(all(k in current for k in comb) for comb in KeyComb_Quit):
+                is_quit = True
+
+    def on_release(key):
+        try:
+            current.remove(key)
+        except KeyError:
+            pass
+    current  = set()
+    listener = pynput.keyboard.Listener(on_press=on_press, on_release=on_release)
+    listener.start()
 def main():
     parser = argparse.ArgumentParser(description='Async sync folders based on in parameters', prog="Sync folders",
         epilog="""You can pass multiple instance of the parameters exept the -l/--logPath to handle multiple folders, 
                 parameters are grouped by order of input parameter in groups of 3 (source, dest, intercal) and the number of those "sets" needs to be even
+                -l and -b needs to be added as last parameters
+                log is saved under filname with current date and hour(24)
                 maximum of folders per process is around 500""")
 
     parser.add_argument('-s', '--source',   action='append', help="source folder path",          type=validate_filepath_arg, required=True)
     parser.add_argument('-r', '--replica',  action='append', help="replica folder path",         type=validate_filepath_arg, required=True)
     parser.add_argument('-i', '--interval', action='append', help="source folder interval scan", type=int,                   required=True)
     parser.add_argument('-l', '--logPath',  action='store',  help="folder for logs",             type=validate_filepath_arg, required=True)
+    parser.add_argument('-b', '--breakChar',action='store',  help="char to be used in combination ctr+char to stop script", type=str, required=True)
     
         
     inputArgs   = parser.parse_args()
     validateSets(vars(inputArgs))
 
+    
+    keyListener(inputArgs.breakChar)
     logLocation = inputArgs.logPath
     synSet      = {}
 
