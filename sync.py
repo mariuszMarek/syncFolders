@@ -89,7 +89,8 @@ class SyncFolders(SaveLog, Thread):
         return dict( sorted( {hashKey: dictValue for hashKey, dictValue in DictA.items() if hashKey not in DictB}.items(), key=lambda item: item[1], reverse=reverseSort))
     def _preprLog(self,logPrintStr, instructions, copiedType, sourceFile, destFile, hashOfItem):
         self.logActions.append([hashOfItem,instructions,copiedType, logPrintStr,sourceFile, destFile])
-        # print(self.logActions)
+        # if not logPrintStr : print(logPrintStr)
+        print(logPrintStr)
     def _diff(self):        
         self.diffMap['Copy'] = self._createNewDiffDict(self.mapOfSouFiles, self.mapOfDesFiles, reverseSort=False)
         self.diffMap['Del']  = self._createNewDiffDict(self.mapOfDesFiles, self.mapOfSouFiles, reverseSort=True)        
@@ -102,33 +103,36 @@ class SyncFolders(SaveLog, Thread):
                 logDescription = ""
                 operatedType   = ""
                 if instructions == "Copy":
-
                     if Path(sourceFile).is_dir() and not Path(destFile).is_dir():                        
-                        os.makedirs(os.path.dirname(destFile), exist_ok=True)                    
+                        os.makedirs(os.path.dirname(destFile), exist_ok=True)
+                        logDescription = f"Folder {sourceFile} was created in {self.destinFilePath}"
+                        operatedType   = "folder"
                     else:
                         try:                            
-                            shutil.copy2(sourceFile, destFile,)
-                            logDescription = f"File {items} from {self.sourceFilePath} copied to {self.destinFilePath}"
-                            operatedType   = "file"
+                            shutil.copy2(sourceFile, destFile,)                            
                         except:
                             print (f"Can't copy the file {sourceFile} to {destFile} or create subfolders, please check filepaths provided and/or permissions")
-
+                        else:
+                            logDescription = f"File {items} from {self.sourceFilePath} copied to {self.destinFilePath}"
+                            operatedType   = "file"
                 if(instructions == "Del" and not destFile+"\\" in wasDeleted):                    
                     if(Path(destFile).is_dir()):
                         try:
                             wasDeleted.append(destFile)                            
-                            Path(destFile).rmdir()
-                            logDescription = f"Folder {items} was removed from {self.destinFilePath}"
-                            operatedType   = "folder"
+                            Path(destFile).rmdir()                            
                         except:
                             print (f"Can't delete the folder {destFile}, please check filepaths provided and/or permissions")                        
+                        else:
+                            logDescription = f"Folder {items} was removed from {self.destinFilePath}"
+                            operatedType   = "folder"
                     else :
                         try:                            
-                            Path(destFile).unlink()
+                            Path(destFile).unlink()                            
+                        except:
+                            print (f"Can't delete the file {destFile} {items}, please check filepaths provided and/or permissions")                
+                        else:
                             logDescription = f"File {items} was removed from {self.destinFilePath}"
                             operatedType   = "file"                            
-                        except:
-                            print (f"Can't delete the file {destFile} {items}, please check filepaths provided and/or permissions")
                 self._preprLog(hashOfItem=hashKeys,logPrintStr=logDescription, instructions=instructions, copiedType=operatedType,sourceFile=sourceFile, destFile=destFile)
 
 def main():
