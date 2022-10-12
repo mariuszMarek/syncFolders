@@ -94,8 +94,42 @@ class SyncFolders(SaveLog, Thread):
     def _diff(self):        
         self.diffMap['Copy'] = self._createNewDiffDict(self.mapOfSouFiles, self.mapOfDesFiles, reverseSort=False)
         self.diffMap['Del']  = self._createNewDiffDict(self.mapOfDesFiles, self.mapOfSouFiles, reverseSort=True)        
-    def _copyOperation(self):
-        pass
+    def _copyOperation(self,sourceFile, destFile, items):
+        logDescription = ""
+        operatedType   = ""
+        if Path(sourceFile).is_dir() and not Path(destFile).is_dir():                        
+            os.makedirs(os.path.dirname(destFile), exist_ok=True)
+            logDescription = f"Folder {items} was created in {self.destinFilePath}"
+            operatedType   = "folder"
+        else:
+            try:                            
+                shutil.copy2(sourceFile, destFile,)                            
+            except:
+                print (f"Can't copy the file {sourceFile} to {destFile} or create subfolders, please check filepaths provided and/or permissions")
+            else:
+                logDescription = f"File {items} from {self.sourceFilePath} copied to {self.destinFilePath}"
+                operatedType   = "file"
+        return [logDescription, operatedType]
+    def _delOperation(self,destFile, items):
+        logDescription = ""
+        operatedType   = ""
+        if(Path(destFile).is_dir()):
+            try:                            
+                Path(destFile).rmdir()                            
+            except:
+                print (f"Can't delete the folder {destFile}, please check filepaths provided and/or permissions")                        
+            else:
+                logDescription = f"Folder {items} was removed from {self.destinFilePath}"
+                operatedType   = "folder"
+        else :
+            try:                            
+                Path(destFile).unlink()                            
+            except:
+                print (f"Can't delete the file {destFile} {items}, please check filepaths provided and/or permissions")                
+            else:
+                logDescription = f"File {items} was removed from {self.destinFilePath}"
+                operatedType   = "file"
+        return [logDescription, operatedType]
     def _operationOfFolders(self):
         for instructions, listOfFilesDict in self.diffMap.items():            
             for hashKeys, items in listOfFilesDict.items():
@@ -103,36 +137,8 @@ class SyncFolders(SaveLog, Thread):
                 destFile       = self.destinFilePath +  items
                 logDescription = ""
                 operatedType   = ""
-                if instructions == "Copy":
-                    if Path(sourceFile).is_dir() and not Path(destFile).is_dir():                        
-                        os.makedirs(os.path.dirname(destFile), exist_ok=True)
-                        logDescription = f"Folder {items} was created in {self.destinFilePath}"
-                        operatedType   = "folder"
-                    else:
-                        try:                            
-                            shutil.copy2(sourceFile, destFile,)                            
-                        except:
-                            print (f"Can't copy the file {sourceFile} to {destFile} or create subfolders, please check filepaths provided and/or permissions")
-                        else:
-                            logDescription = f"File {items} from {self.sourceFilePath} copied to {self.destinFilePath}"
-                            operatedType   = "file"
-                if(instructions == "Del"):
-                    if(Path(destFile).is_dir()):
-                        try:                            
-                            Path(destFile).rmdir()                            
-                        except:
-                            print (f"Can't delete the folder {destFile}, please check filepaths provided and/or permissions")                        
-                        else:
-                            logDescription = f"Folder {items} was removed from {self.destinFilePath}"
-                            operatedType   = "folder"
-                    else :
-                        try:                            
-                            Path(destFile).unlink()                            
-                        except:
-                            print (f"Can't delete the file {destFile} {items}, please check filepaths provided and/or permissions")                
-                        else:
-                            logDescription = f"File {items} was removed from {self.destinFilePath}"
-                            operatedType   = "file"                            
+                if instructions == "Copy": logDescription, operatedType = self._copyOperation(sourceFile, destFile, items)
+                if instructions == "Del" : logDescription, operatedType = self._delOperation(destFile, items)                                                
                 self._preprLog(hashOfItem=hashKeys,logPrintStr=logDescription, instructions=instructions, copiedType=operatedType,sourceFile=sourceFile, destFile=destFile)
 
 def main():
