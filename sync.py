@@ -2,6 +2,7 @@ from os import listdir
 from pathvalidate.argparse import validate_filepath_arg
 from threading import Thread
 from pathlib import Path
+from time import localtime, strftime
 
 import hashlib, shutil, argparse, time, pathlib, glob
 import keyboard, pynput, sys, os
@@ -25,7 +26,7 @@ def on_release(key):
         current.remove(key)
     except KeyError:
         pass
-current = set()
+current  = set()
 listener = pynput.keyboard.Listener(on_press=on_press, on_release=on_release)
 listener.start()
 
@@ -33,25 +34,43 @@ listener.start()
 class SaveLog:
     def __init__(self, logLocation):
         self.logLocation = logLocation
-        pass
-    async def parseData(self, logContent):
+        self.sysSep      = os.path.sep        
+        self.logHeader   = "Time stamp;MD5 value;Action;what;source;destination;log text\n"
+    def parseData(self, logContent):
         # make some CSV structure + some translations?
-        self.saveToFile()
-        pass
-    async def saveToFile(self):
-        pass
+        stringToSave = ""
+        for rows in logContent:            
+            stringToSave += ";".join(rows) + "\n"
+        self._saveToFile(stringToSave.rstrip())        
+    def _saveToFile(self, stringToSave):
+        currentDayHour = strftime("%Y%m%d_%H", localtime())        
+        logFileLoc     = f"{self.logLocation}{self.sysSep}Action_log_{currentDayHour}.csv"
+        logExists      = not Path(logFileLoc).is_file()
+        while True:
+            logFile = open(logFileLoc, "a")
+            if logFile.writable():
+                if logExists: logFile.write(self.logHeader)
+                logFile.write(stringToSave)
+                logFile.close()
+                break                
 class SyncFolders(SaveLog, Thread):
     def __init__(self, Instructions, saveLogLocation):
         Thread.__init__(self)
+        super().__init__(saveLogLocation)
+
         self.sourceFilePath = Instructions[0]
         self.destinFilePath = Instructions[1]
         self.TimeInterval   = Instructions[2] # * 30
+        
+        self.sysSep         = os.path.sep
+        self.timeWidth      = 2
+
         self.mapOfSouFiles  = {}
         self.mapOfDesFiles  = {}
         self.diffMap        = {}
         self.logActions     = []
+
         
-        super().__init__(saveLogLocation)
     def run(self):
         self._runSync()
     def _runSync(self):
@@ -60,36 +79,38 @@ class SyncFolders(SaveLog, Thread):
                 self._scanFolder()
                 self._diff()
                 self._operationOfFolders()
+                self._saveLog()
                 time.sleep(self.TimeInterval)
-                # print("another sequence")
                 self._cleanVariables()
                 if is_quit: break 
     def _cleanVariables(self):
         self.mapOfSouFiles  = {}
         self.mapOfDesFiles  = {}
         self.diffMap        = {}
-        self.logActions     = []
+        self.logActions     = []        
     def _extractMetaAndScan(self,scanRoot, folderMapped):
-        searchString = scanRoot + os.path.sep +  "**" + os.path.sep + "**"
+        searchString = scanRoot + self.sysSep +  "**" + self.sysSep + "**"
         for files in glob.iglob(searchString, recursive=True):                        
-            if files == scanRoot + os.path.sep : continue            
+            if files == scanRoot + self.sysSep : continue            
             fileLoc   = files
             meta      = os.stat(files)
             modTime   = meta.st_mtime
             fileSize  = meta.st_size
             fileLoc   = fileLoc.replace(scanRoot, "")
             hasString = fileLoc + str(modTime) + str(fileSize)
-            if(not os.path.isfile(files)): hasString = fileLoc + os.path.sep if not fileLoc.endswith(os.path.sep) else fileLoc                
+            if(not Path(files).is_file()): hasString = fileLoc + self.sysSep if not fileLoc.endswith(self.sysSep) else fileLoc                
             hashMD5   = hashlib.md5( (hasString).encode('utf-8') ).hexdigest()            
             folderMapped[hashMD5] = fileLoc
     def _scanFolder(self):        
         self._extractMetaAndScan(self.sourceFilePath, self.mapOfSouFiles)        
         self._extractMetaAndScan(self.destinFilePath, self.mapOfDesFiles)
-    def _createNewDiffDict(self,DictA,DictB, reverseSort):        
+    def _createNewDiffDict(self,DictA,DictB, reverseSort):
         return dict( sorted( {hashKey: dictValue for hashKey, dictValue in DictA.items() if hashKey not in DictB}.items(), key=lambda item: item[1], reverse=reverseSort))
-    def _preprLog(self,logPrintStr, instructions, copiedType, sourceFile, destFile, hashOfItem):
-        self.logActions.append([hashOfItem,instructions,copiedType, logPrintStr,sourceFile, destFile])
-        # if not logPrintStr : print(logPrintStr)
+    def _saveLog(self):
+        if self.logActions : super().parseData(self.logActions)
+    def _preprLog(self,logPrintStr, instructions, copiedType, sourceFile, destFile, hashOfItem):        
+        timeStamp    = strftime("%Y%m%d_%H%M%S", localtime())
+        self.logActions.append([timeStamp,hashOfItem,instructions,copiedType, sourceFile, destFile, logPrintStr])
         print(logPrintStr)
     def _diff(self):        
         self.diffMap['Copy'] = self._createNewDiffDict(self.mapOfSouFiles, self.mapOfDesFiles, reverseSort=False)
