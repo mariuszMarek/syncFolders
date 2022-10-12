@@ -1,11 +1,11 @@
 from os import listdir
 from pathvalidate.argparse import validate_filepath_arg
 from threading import Thread
-from pathlib import Path
+from pathlib import Path, PurePath
 from time import localtime, strftime
 
 import hashlib, shutil, argparse, time, pathlib, glob
-import keyboard, pynput, sys, os
+import keyboard, pynput, sys, os, threading
 
 is_quit      = False
 quit_char    = 'b'
@@ -35,10 +35,10 @@ class SaveLog:
     def __init__(self, logLocation):
         self.logLocation = logLocation
         self.sysSep      = os.path.sep        
-        self.logHeader   = "Time stamp;MD5 value;Action;what;source;destination;log text\n"
+        self.logHeader   = "Time stamp;MD5 value;Action;what;source;destination;log text"
     def parseData(self, logContent):
         # make some CSV structure + some translations?
-        stringToSave = ""
+        stringToSave = "\n"
         for rows in logContent:            
             stringToSave += ";".join(rows) + "\n"
         self._saveToFile(stringToSave.rstrip())        
@@ -55,13 +55,13 @@ class SaveLog:
                 break                
 class SyncFolders(SaveLog, Thread):
     def __init__(self, Instructions, saveLogLocation):
-        Thread.__init__(self)
+        Thread.__init__(self)        
         super().__init__(saveLogLocation)
 
         self.sourceFilePath = Instructions[0]
         self.destinFilePath = Instructions[1]
         self.TimeInterval   = Instructions[2] # * 30
-        
+                
         self.sysSep         = os.path.sep
         self.timeWidth      = 2
 
@@ -69,11 +69,16 @@ class SyncFolders(SaveLog, Thread):
         self.mapOfDesFiles  = {}
         self.diffMap        = {}
         self.logActions     = []
-
-        
+                
+        self._checkIfDestExists()        
+        print(f"run sync folder -> {self.sourceFilePath} with -> {self.destinFilePath}")                
+    def _checkIfDestExists(self):        
+        rootOfRoot = PurePath(self.destinFilePath).parts
+        rootOfRoot = rootOfRoot[-1]        
+        if not Path(self.destinFilePath).is_dir() : 
+            os.makedirs(self.destinFilePath, exist_ok=True)
+            self._preprLog(hashOfItem="Root",logPrintStr=f"Created missing dest root folder {rootOfRoot} ", instructions="Copy", copiedType="Copy",sourceFile=self.sourceFilePath, destFile=self.destinFilePath)            
     def run(self):
-        self._runSync()
-    def _runSync(self):
         global is_quit
         while True:
                 self._scanFolder()
@@ -159,7 +164,7 @@ class SyncFolders(SaveLog, Thread):
                 logDescription = ""
                 operatedType   = ""
                 if instructions == "Copy": logDescription, operatedType = self._copyOperation(sourceFile, destFile, items)
-                if instructions == "Del" : logDescription, operatedType = self._delOperation(destFile, items)                                                
+                if instructions == "Del" : logDescription, operatedType = self._delOperation(destFile, items)
                 self._preprLog(hashOfItem=hashKeys,logPrintStr=logDescription, instructions=instructions, copiedType=operatedType,sourceFile=sourceFile, destFile=destFile)
 
 def main():
@@ -185,7 +190,7 @@ def main():
     
     for job, jobParams in synSet.items():        
         folderSync = SyncFolders(jobParams,logLocation)
-        folderSync.run()
+        folderSync.start()
 
 
 def validateSets(inputArgs):        
